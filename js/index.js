@@ -1,22 +1,31 @@
+let mvae;
+
+async function initializeModel() {
+    mvae = new music_vae.MusicVAE('https://storage.googleapis.com/magentadata/js/checkpoints/music_vae/trio_4bar');
+    await mvae.initialize();
+    console.log('Modell geladen.');
+
+    // Loading Screen verstecken
+    document.getElementById('loadingScreen').style.display= 'none';
+}
+
+initializeModel();
+
 // Generieren einer Melodie basierend auf der erkannten Emotion
 async function generateMelody(emotion) {
     console.log(`Generating melody for: ${emotion}`);
     const characteristics = getMusicCharacteristics(emotion);
 
     try {
-        // Magenta MusicVAE Model initialisieren
-        const mvae = new music_vae.MusicVAE('https://storage.googleapis.com/magentadata/js/checkpoints/music_vae/trio_4bar');
-        await mvae.initialize();
-        console.log('Model loaded.');
-
         // Sample-Melodie mit dem Model generieren
-        const sample = await mvae.sample(1, characteristics.temperature);
-        console.log('Melody generated.');
+        const sample = await mvae.sample(1, characteristics.temperature);    
 
-        // Generierte Melodie abspielen
+        // GainNode erstellen um Lautstärke zu kontrollieren
+        Tone.Master.volume.value = -6;
+
+        // Player erstellen und Melodie abspielen
         const player = new core.Player();
         player.start(sample[0]);
-        console.log('Playback started.');
     } catch (error) {
         console.error('Error generating melody:', error);
     }
@@ -44,12 +53,21 @@ function startWebcamAndTracking() {
             video.srcObject = stream;
             video.onloadedmetadata = function() {
                 video.play();
+                
+                // Error Screen verstecken und Loading Screen anzeigen wenn Zugriff zur Kamera erlaubt wurde
+                document.getElementById('errorScreen').style.display = 'none';
+                document.getElementById('loadingScreen').style.display = 'flex';
+
                 // Wenn der Webcamfeed ready ist, anfangen Gesichtszüge zu erkennen
                 startTracking(video);
             };
         })
         .catch((err) => {
             console.error("Error accessing webcam:", err);
+
+            // Error Screen zeigen wenn Zugriff abgelehnt wurde
+            document.getElementById('errorScreen').style.display = 'flex';
+            document.getElementById('loadingScreen').style.display = 'none';
         });
 }
 

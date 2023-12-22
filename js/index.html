@@ -18,6 +18,12 @@
     <header>
         <img src="logo.png" alt="Whatsyourtune">
     </header>
+    <div id="loadingScreen" class="loading-screen">
+    <p>Loading...</p>
+    </div>
+    <div id="errorScreen" class="error-screen" style="display: none;">
+    <p>Access to the webcam was denied. Please reload and allow access to use this feature.</p>
+    </div>
     <div class="content">
         <video id="webcam" width="640" height="480" autoplay></video>
         <script src="index.js"></script>
