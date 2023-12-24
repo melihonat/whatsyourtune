@@ -64,3 +64,9 @@ header img {
     max-width: 700px;
     width: 100%;
 }
+
+#emotionDisplay {
+    text-align: center;
+    font-size: 20px;
+    color: #333; 
+}

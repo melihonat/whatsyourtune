@@ -1,4 +1,5 @@
 let mvae;
+let isMusicPlaying = false;
 
 async function initializeModel() {
     mvae = new music_vae.MusicVAE('https://storage.googleapis.com/magentadata/js/checkpoints/music_vae/trio_4bar');
@@ -13,6 +14,9 @@ initializeModel();
 
 // Generieren einer Melodie basierend auf der erkannten Emotion
 async function generateMelody(emotion) {
+    // Checken ob Musik schon spielt
+    if (isMusicPlaying) return;
+
     console.log(`Generating melody for: ${emotion}`);
     const characteristics = getMusicCharacteristics(emotion);
 
@@ -26,6 +30,10 @@ async function generateMelody(emotion) {
         // Player erstellen und Melodie abspielen
         const player = new core.Player();
         player.start(sample[0]);
+
+        // Loading Screen verstecken
+        document.getElementById('loadingScreen').style.display = 'none';
+        isMusicPlaying = true;
     } catch (error) {
         console.error('Error generating melody:', error);
     }
@@ -91,6 +99,8 @@ function trackExpression(ctracker) {
             const mouthCornerDistance = Math.abs(positions[44][1] - positions[50][1]); // Beispiel indices für Mundecken
             const emotion = mouthCornerDistance > 15 ? 'happy' : 'sad';
 
+            // EmotionDisplay updaten
+            document.getElementById('emotionDisplay').innerText = `Emotion: ${emotion}`;
             // Melodie generieren
             generateMelody(emotion);
         }
