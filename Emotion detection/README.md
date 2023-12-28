@@ -11,3 +11,8 @@ Das FER2013-Dataset ist nicht in diesem Repository enthalten, sondern ist hier a
 https://www.kaggle.com/datasets/msambare/fer2013
 
 Nach diesem Schritt führe einfach das Skript "emotion_model.py" aus. Die beiden trainierten Modelle werden wieder in diesem Ordner gespeichert.
+
+## TFJS-Model speichern
+
+Um das Modell auf unserer Website ausführen zu können, konvertieren wir es zu einem TFJS-Modell, welches wir dann im js-Ordner weiter verwenden.
+``` tensorflowjs_converter --input_format=keras emotion_model.h5 ../js ``` 
