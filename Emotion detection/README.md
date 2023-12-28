@@ -15,4 +15,4 @@ Nach diesem Schritt führe einfach das Skript "emotion_model.py" aus. Die beiden
 ## TFJS-Model speichern
 
 Um das Modell auf unserer Website ausführen zu können, konvertieren wir es zu einem TFJS-Modell, welches wir dann im js-Ordner weiter verwenden.
-´´´ tensorflowjs_converter --input_format=keras emotion_model.h5 ../js ``` 
+``` tensorflowjs_converter --input_format=keras emotion_model.h5 ../js ``` 
