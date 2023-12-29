@@ -1,111 +1,104 @@
-let mvae;
-let isMusicPlaying = false;
+let model, musicVAE;
+let isModelLoaded = false;
 
-async function initializeModel() {
-    mvae = new music_vae.MusicVAE('https://storage.googleapis.com/magentadata/js/checkpoints/music_vae/trio_4bar');
-    await mvae.initialize();
-    console.log('Modell geladen.');
-
-    // Loading Screen verstecken
-    document.getElementById('loadingScreen').style.display= 'none';
+async function loadModel() {
+    model = await tf.loadLayersModel('model.json');
+    console.log('Emotion Model geladen.');
+    isModelLoaded = true;
 }
 
-initializeModel();
+async function loadMusicVAE() {
+    musicVAE = new music_vae.MusicVAE('https://storage.googleapis.com/magentadata/js/checkpoints/music_vae/trio_4bar');
+    await musicVAE.initialize();
+    console.log('MusicVAE geladen.')
+}
 
-// Generieren einer Melodie basierend auf der erkannten Emotion
-async function generateMelody(emotion) {
-    // Checken ob Musik schon spielt
-    if (isMusicPlaying) return;
-
-    console.log(`Generating melody for: ${emotion}`);
-    const characteristics = getMusicCharacteristics(emotion);
-
+async function startWebcam() {
+    const webcamElement = document.getElementById('webcam');
     try {
-        // Sample-Melodie mit dem Model generieren
-        const sample = await mvae.sample(1, characteristics.temperature);    
-
-        // GainNode erstellen um Lautstärke zu kontrollieren
-        Tone.Master.volume.value = -6;
-
-        // Player erstellen und Melodie abspielen
-        const player = new core.Player();
-        player.start(sample[0]);
-
-        // Loading Screen verstecken
-        document.getElementById('loadingScreen').style.display = 'none';
-        isMusicPlaying = true;
+        const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+        webcamElement.srcObject = stream;
+        detectEmotion();
     } catch (error) {
-        console.error('Error generating melody:', error);
+        console.error('Fehler beim Laden der Webcam', error);
+
+        document.getElementById('errorScreen').style.display = 'block';
+        document.getElementById('loadingScreen').style.display = 'none';
     }
 }
 
-// Je nach Emotion soll andere Musik abgespielt werden
-function getMusicCharacteristics(emotion) {
-    switch(emotion) {
-        case 'happy':
-            return { temperature: 1.2 };
-        case 'sad':
-            return { temperature: 0.8 };
-        default:
-            return { temperature: 1.0 };
+async function detectEmotion() {
+    if (!isModelLoaded) return;
+
+    requestAnimationFrame(detectEmotion); // Nächsten call schedulen
+
+    const webcamElement = document.getElementById('webcam');
+    const canvas = document.createElement('canvas');
+    const context = canvas.getContext('2d');
+
+    // Bild von Webcam holen und preprocessen (wie bei webcam-test-windows)
+    const inputWidth = 48;
+    const inputHeight = 48;
+    canvas.width = inputWidth;
+    canvas.height = inputHeight;
+
+    context.drawImage(webcamElement, 0, 0, inputWidth, inputHeight);
+
+    // Bild zu grayscale konvertieren und normalisieren
+    let imageData = context.getImageData(0, 0, inputWidth, inputHeight);
+    let grayscaleImg = convertToGrayscale(imageData);
+    let normalizedImg = normalizePixelValues(grayscaleImg);
+
+    // Emotion predicten
+    const prediction = await model.predict(tf.tensor([normalizedImg], [1, inputWidth, inputHeight, 1]));
+
+    // Höchste Wahrscheinlichkeit aus der Prediction rausziehen
+    const predictionData = await prediction.data();
+    const highestProbabilityIndex = predictionData.indexOf(Math.max(...predictionData));
+
+    // Index zum Label mappen
+    const emotionLabels = ['Angry', 'Disgust', 'Fear', 'Happy', 'Sad', 'Surprise', 'Neutral'];
+    const predictedEmotion = emotionLabels[highestProbabilityIndex];
+
+    document.getElementById('emotionDisplay').innerText = `Emotion: ${predictedEmotion}`;
+
+    generateAndPlayMusic(predictedEmotion);
+
+    setTimeout(detectEmotion, 3000);
+}
+
+function convertToGrayscale(imageData) {
+    let grayscale = [];
+    for (let i=0; i < imageData.data.length; i += 4) {
+        // Luminanz-Formel: 0.3 * R + 0.59 * G + 0.11 * B
+        let lum = 0.3 * imageData.data[i] + 0.59 * imageData[i+1] + 0.11 * imageData[i+2];
+        grayscale.push(lum);
+    }
+    return grayscale;
+}
+
+function normalizePixelValues(grayscaleImg) {
+    return grayscaleImg.map(pixel => pixel/255);
+}
+
+async function generateAndPlayMusic(emotion) {
+    const emotionMusicMap = {
+        happy: { /* Einstellungen für happy Musik */},
+        sad: { /* Einstellungen für sad Musik */},
+        // Andere Emotionen
+    };
+
+    const musicSettings = emotionMusicMap[emotion];
+    if (musicSettings) {
+        const melodies = await musicVAE.sample(1, musicSettings.temperature);
+        // TODO Generierte Melodien abspielen
     }
 }
 
-// Webcam starten und clmtrackr initialisieren
-function startWebcamAndTracking() {
-    const video = document.getElementById('webcam');
-
-    // Webcam-Access
-    navigator.mediaDevices.getUserMedia({ video: true })
-        .then((stream) => {
-            video.srcObject = stream;
-            video.onloadedmetadata = function() {
-                video.play();
-                
-                // Error Screen verstecken und Loading Screen anzeigen wenn Zugriff zur Kamera erlaubt wurde
-                document.getElementById('errorScreen').style.display = 'none';
-                document.getElementById('loadingScreen').style.display = 'flex';
-
-                // Wenn der Webcamfeed ready ist, anfangen Gesichtszüge zu erkennen
-                startTracking(video);
-            };
-        })
-        .catch((err) => {
-            console.error("Error accessing webcam:", err);
-
-            // Error Screen zeigen wenn Zugriff abgelehnt wurde
-            document.getElementById('errorScreen').style.display = 'flex';
-            document.getElementById('loadingScreen').style.display = 'none';
-        });
+async function init() {
+    await loadModel();
+    await loadMusicVAE();
+    startWebcam();
 }
 
-// Clmtrackr initialisieren und starten
-function startTracking(videoElement) {
-    var ctracker = new clm.tracker();
-    ctracker.init();
-    ctracker.start(videoElement);
-
-    // Durchgehend nach Emotionen checken
-    trackExpression(ctracker);
-}
-
-// Emotion aus Gesichtszüge herausinterpretieren
-function trackExpression(ctracker) {
-    function drawLoop() {
-        requestAnimationFrame(drawLoop);
-        var positions = ctracker.getCurrentPosition();
-        if (positions) {
-            // Basic Logik um Emotionen zu erkennen, basierend auf der Distanz der Mundecken
-            const mouthCornerDistance = Math.abs(positions[44][1] - positions[50][1]); // Beispiel indices für Mundecken
-            const emotion = mouthCornerDistance > 15 ? 'happy' : 'sad';
-
-            // EmotionDisplay updaten
-            document.getElementById('emotionDisplay').innerText = `Emotion: ${emotion}`;
-            // Melodie generieren
-            generateMelody(emotion);
-        }
-    }
-    drawLoop();
-}
-// Webcam und Facial Tracking starten
-startWebcamAndTracking();
+window.onload = init;
