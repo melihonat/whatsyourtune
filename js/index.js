@@ -1,14 +1,60 @@
 tf.setBackend('cpu');
 let emotionModel;
+let musicModel;
+
+const seed1 = {
+    notes: [
+        // Piano (right hand) - Melody in C Major
+        { pitch: 60, startTime: 0, endTime: 0.5, instrument: 0 },   // C4
+        { pitch: 64, startTime: 0.5, endTime: 1, instrument: 0 },  // E4
+        { pitch: 67, startTime: 1, endTime: 1.5, instrument: 0 },  // G4
+        { pitch: 72, startTime: 1.5, endTime: 2, instrument: 0 },  // C5
+        { pitch: 71, startTime: 2, endTime: 2.5, instrument: 0 },  // B4
+        { pitch: 67, startTime: 2.5, endTime: 3, instrument: 0 },  // G4
+        { pitch: 64, startTime: 3, endTime: 3.5, instrument: 0 },  // E4
+        { pitch: 60, startTime: 3.5, endTime: 4, instrument: 0 },  // C4
+
+        // Bass - Root notes of the C Major chord progression
+        { pitch: 48, startTime: 0, endTime: 1, instrument: 1 },    // C3
+        { pitch: 48, startTime: 1, endTime: 2, instrument: 1 },    // C3
+        { pitch: 48, startTime: 2, endTime: 3, instrument: 1 },    // C3
+        { pitch: 48, startTime: 3, endTime: 4, instrument: 1 },    // C3
+
+        // Drums - Simple drum pattern
+        { pitch: 36, startTime: 0, endTime: 0.5, instrument: 2 },  // Kick drum
+        { pitch: 38, startTime: 0.5, endTime: 1, instrument: 2 },  // Snare drum
+        { pitch: 42, startTime: 1, endTime: 1.5, instrument: 2 },  // Closed Hi-hat
+        { pitch: 36, startTime: 1.5, endTime: 2, instrument: 2 },  // Kick drum
+        { pitch: 38, startTime: 2, endTime: 2.5, instrument: 2 },  // Snare drum
+        { pitch: 42, startTime: 2.5, endTime: 3, instrument: 2 },  // Closed Hi-hat
+        { pitch: 36, startTime: 3, endTime: 3.5, instrument: 2 },  // Kick drum
+        { pitch: 38, startTime: 3.5, endTime: 4, instrument: 2 },  // Snare drum
+    ],
+    totalTime: 4 // Length of the seed in quarter notes
+};
+
 
 document.addEventListener("DOMContentLoaded", function() {
-    // Emotion Detection Model laden
+    // Emotion Detection und Music Model laden
     loadEmotionModel();
+    loadMusicModel();
+
+    async function loadEmotionModel() {
+        emotionModel = await tf.loadLayersModel('/models/emotion/model.json');
+    }
+
+    async function loadMusicModel() {
+        musicModel = new mm.MusicVAE('https://storage.googleapis.com/magentadata/js/checkpoints/music_vae/trio_4bar');
+        await musicModel.initialize();
+    }
+
+    const player = new mm.Player();
 
     const video = document.getElementById('webcam');
-    // Alle Face-Api-JS Models laden
+
+    // Face-Api-JS TinyFaceDetector Model laden
     Promise.all([
-        faceapi.nets.tinyFaceDetector.loadFromUri('/models'),
+        faceapi.nets.tinyFaceDetector.loadFromUri('/models/face'),
     ]).then(startVideo)
 
     function startVideo() {
@@ -22,8 +68,11 @@ document.addEventListener("DOMContentLoaded", function() {
     }
 
     video.addEventListener('play', () => {
+        // Canvas erstellen und unsichtbar über die Webcam legen
         const canvas = faceapi.createCanvasFromMedia(video)
-        document.body.append(canvas)
+        const contentDiv = document.querySelector('.content');
+        contentDiv.appendChild(canvas);
+
         const displaySize = { width: video.width, height: video.height }
         faceapi.matchDimensions(canvas, displaySize)
 
@@ -67,12 +116,12 @@ document.addEventListener("DOMContentLoaded", function() {
                         .resizeNearestNeighbor([48, 48]) // Models erwartete Inputgröße
                         .mean(2) // Zu grayscale konvertieren mittels RGB-Channel-Averaging
                         .toFloat()
-                        .div(255.0) // Pixelwerte normalisieren (0-1)
+                        .div(255.0) // Pixelwerte normalisieren (-1, 1)
                         .expandDims(-1) // Channel dimension hinzufügen
                         .expandDims(0); // Batch dimension hinzufügen
         
         const prediction = await emotionModel.predict(tensor).data();
-
+        console.log(prediction);
         // Prediction als lesbares Format darstellen
         const emotionIndex = prediction.indexOf(Math.max(...prediction));
         const emotionLabels = ['Angry', 'Disgust', 'Fear', 'Happy', 'Sad', 'Surprised', 'Neutral'];
@@ -81,11 +130,50 @@ document.addEventListener("DOMContentLoaded", function() {
         return detectedEmotion;
     }
 
-    function generateMusicBasedOnEmotion(emotion) {
+    async function generateMusicBasedOnEmotion(emotion) {
+        if (!musicModel) {
+            console.error("Music Model ist noch nicht geladen!");
+            return;
+        }
+
+        let seed; // Musikalischen Seed oder Features für jede Emotion definieren
+
+        switch(emotion) {
+            case 'Angry':
+                seed = seed1;
+                break;
+            case 'Disgust':
+                seed = seed1;
+                break;
+            case 'Fear':
+                seed = seed1;
+                break;
+            case 'Happy':
+                seed = seed1;
+                break;
+            case 'Sad':
+                seed = seed1;
+                break;
+            case 'Surprised':
+                seed = seed1;
+                break;
+            case 'Neutral':
+                seed = seed1;
+                break;
+        }
+
+        const generatedMusic = await musicModel.sample(seed);
+        playMusic(generatedMusic);
+
         console.log("Generating music for emotion: " + emotion);
+        console.log(seed)
     }
 
-    async function loadEmotionModel() {
-        emotionModel = await tf.loadLayersModel('/models/model.json');
+    // Spielt Musik ab.
+    function playMusic(musicSequence) {
+        if (!player.isPlaying) {
+            player.stop();
+        }
+        player.start(musicSequence);
     }
 });
