@@ -1,104 +1,91 @@
-let model, musicVAE;
-let isModelLoaded = false;
+tf.setBackend('cpu');
+let emotionModel;
 
-async function loadModel() {
-    model = await tf.loadLayersModel('model.json');
-    console.log('Emotion Model geladen.');
-    isModelLoaded = true;
-}
+document.addEventListener("DOMContentLoaded", function() {
+    // Emotion Detection Model laden
+    loadEmotionModel();
 
-async function loadMusicVAE() {
-    musicVAE = new music_vae.MusicVAE('https://storage.googleapis.com/magentadata/js/checkpoints/music_vae/trio_4bar');
-    await musicVAE.initialize();
-    console.log('MusicVAE geladen.')
-}
+    const video = document.getElementById('webcam');
+    // Alle Face-Api-JS Models laden
+    Promise.all([
+        faceapi.nets.tinyFaceDetector.loadFromUri('/models'),
+    ]).then(startVideo)
 
-async function startWebcam() {
-    const webcamElement = document.getElementById('webcam');
-    try {
-        const stream = await navigator.mediaDevices.getUserMedia({ video: true });
-        webcamElement.srcObject = stream;
-        detectEmotion();
-    } catch (error) {
-        console.error('Fehler beim Laden der Webcam', error);
-
-        document.getElementById('errorScreen').style.display = 'block';
-        document.getElementById('loadingScreen').style.display = 'none';
+    function startVideo() {
+        navigator.mediaDevices.getUserMedia({ video: {} })
+        .then(function(stream) {
+            video.srcObject = stream;
+        })
+        .catch(function(err) {
+            console.error("Fehler beim Zugriff auf die Webcam: ", err);
+        });
     }
-}
 
-async function detectEmotion() {
-    if (!isModelLoaded) return;
+    video.addEventListener('play', () => {
+        const canvas = faceapi.createCanvasFromMedia(video)
+        document.body.append(canvas)
+        const displaySize = { width: video.width, height: video.height }
+        faceapi.matchDimensions(canvas, displaySize)
 
-    requestAnimationFrame(detectEmotion); // Nächsten call schedulen
+        setInterval(async () => {
+            const detection = await faceapi.detectSingleFace(video, new faceapi.TinyFaceDetectorOptions);
+            if (detection) {
+                const resizedDetection = faceapi.resizeResults(detection, displaySize)
+                canvas.getContext('2d').clearRect(0, 0, canvas.width, canvas.height)
+                faceapi.draw.drawDetections(canvas, resizedDetection)
 
-    const webcamElement = document.getElementById('webcam');
-    const canvas = document.createElement('canvas');
-    const context = canvas.getContext('2d');
+                // Resize auf 48x48 px
+                const croppedFace = await cropAndResizeFace(video, detection);
 
-    // Bild von Webcam holen und preprocessen (wie bei webcam-test-windows)
-    const inputWidth = 48;
-    const inputHeight = 48;
-    canvas.width = inputWidth;
-    canvas.height = inputHeight;
+                // Emotion Detection Model auf Cropped Face zugreifen lassen
+                const emotion = await detectEmotion(croppedFace);
 
-    context.drawImage(webcamElement, 0, 0, inputWidth, inputHeight);
+                // Emotion anzeigen
+                document.getElementById('emotionDisplay').innerText = `Emotion: ${emotion}`;
 
-    // Bild zu grayscale konvertieren und normalisieren
-    let imageData = context.getImageData(0, 0, inputWidth, inputHeight);
-    let grayscaleImg = convertToGrayscale(imageData);
-    let normalizedImg = normalizePixelValues(grayscaleImg);
+                // Musik generieren
+                generateMusicBasedOnEmotion(emotion);
+            }
+        }, 100)
+    });
 
-    // Emotion predicten
-    const prediction = await model.predict(tf.tensor([normalizedImg], [1, inputWidth, inputHeight, 1]));
+    async function cropAndResizeFace(video, detection) {
+        const face = detection.box;
+        const canvas = document.createElement('canvas');
+        canvas.width = 48;
+        canvas.height = 48;
+        const context = canvas.getContext('2d');
 
-    // Höchste Wahrscheinlichkeit aus der Prediction rausziehen
-    const predictionData = await prediction.data();
-    const highestProbabilityIndex = predictionData.indexOf(Math.max(...predictionData));
+        context.drawImage(video, face.x, face.y, face.width, face.height, 0, 0, 48, 48);
 
-    // Index zum Label mappen
-    const emotionLabels = ['Angry', 'Disgust', 'Fear', 'Happy', 'Sad', 'Surprise', 'Neutral'];
-    const predictedEmotion = emotionLabels[highestProbabilityIndex];
-
-    document.getElementById('emotionDisplay').innerText = `Emotion: ${predictedEmotion}`;
-
-    generateAndPlayMusic(predictedEmotion);
-
-    setTimeout(detectEmotion, 3000);
-}
-
-function convertToGrayscale(imageData) {
-    let grayscale = [];
-    for (let i=0; i < imageData.data.length; i += 4) {
-        // Luminanz-Formel: 0.3 * R + 0.59 * G + 0.11 * B
-        let lum = 0.3 * imageData.data[i] + 0.59 * imageData[i+1] + 0.11 * imageData[i+2];
-        grayscale.push(lum);
+        return canvas;
     }
-    return grayscale;
-}
 
-function normalizePixelValues(grayscaleImg) {
-    return grayscaleImg.map(pixel => pixel/255);
-}
+    async function detectEmotion(croppedFace) {
+        // CroppedFace zu Tensor konvertieren
+        const tensor = tf.browser.fromPixels(croppedFace)
+                        .resizeNearestNeighbor([48, 48]) // Models erwartete Inputgröße
+                        .mean(2) // Zu grayscale konvertieren mittels RGB-Channel-Averaging
+                        .toFloat()
+                        .div(255.0) // Pixelwerte normalisieren (0-1)
+                        .expandDims(-1) // Channel dimension hinzufügen
+                        .expandDims(0); // Batch dimension hinzufügen
+        
+        const prediction = await emotionModel.predict(tensor).data();
 
-async function generateAndPlayMusic(emotion) {
-    const emotionMusicMap = {
-        happy: { /* Einstellungen für happy Musik */},
-        sad: { /* Einstellungen für sad Musik */},
-        // Andere Emotionen
-    };
+        // Prediction als lesbares Format darstellen
+        const emotionIndex = prediction.indexOf(Math.max(...prediction));
+        const emotionLabels = ['Angry', 'Disgust', 'Fear', 'Happy', 'Sad', 'Surprised', 'Neutral'];
+        const detectedEmotion = emotionLabels[emotionIndex];
 
-    const musicSettings = emotionMusicMap[emotion];
-    if (musicSettings) {
-        const melodies = await musicVAE.sample(1, musicSettings.temperature);
-        // TODO Generierte Melodien abspielen
+        return detectedEmotion;
     }
-}
 
-async function init() {
-    await loadModel();
-    await loadMusicVAE();
-    startWebcam();
-}
+    function generateMusicBasedOnEmotion(emotion) {
+        console.log("Generating music for emotion: " + emotion);
+    }
 
-window.onload = init;
+    async function loadEmotionModel() {
+        emotionModel = await tf.loadLayersModel('/models/model.json');
+    }
+});

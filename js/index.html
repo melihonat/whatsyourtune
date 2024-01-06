@@ -6,24 +6,20 @@
     <link rel="stylesheet" href="styles.css">
     <link rel="icon" href="icon.png" type="image/png">
     <title>Whatsyourtune</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.7.58/Tone.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/tensorflow/1.2.8/tf.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@3.3.0/dist/tf.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@vladmandic/face-api/dist/face-api.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@magenta/music@^1.0.0/es6/core.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@magenta/music@^1.0.0/es6/music_vae.js"></script>
-    
+
 </head>
 <body>
     <header>
         <img src="logo.png" alt="Whatsyourtune">
     </header>
-    </div>
-    <div id="errorScreen" class="error-screen" style="display: none;">
-    <p>Der Zugriff auf die Webkamera wurde verweigert. Bitte lade die Seite neu und erlaube den Zugriff, um diese Funktion zu nutzen.</p>
-    </div>
     <div class="content">
         <video id="webcam" width="640" height="480" autoplay></video>
-        <p id="emotionDisplay">Emotion: None</p>
         <script src="index.js"></script>
     </div>
+    <div id="emotionDisplay"></div>
 </body>
 </html>
