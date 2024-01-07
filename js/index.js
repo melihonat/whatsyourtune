@@ -2,37 +2,6 @@ tf.setBackend('cpu');
 let emotionModel;
 let musicModel;
 
-const seed1 = {
-    notes: [
-        // Piano (right hand) - Melody in C Major
-        { pitch: 60, startTime: 0, endTime: 0.5, instrument: 0 },   // C4
-        { pitch: 64, startTime: 0.5, endTime: 1, instrument: 0 },  // E4
-        { pitch: 67, startTime: 1, endTime: 1.5, instrument: 0 },  // G4
-        { pitch: 72, startTime: 1.5, endTime: 2, instrument: 0 },  // C5
-        { pitch: 71, startTime: 2, endTime: 2.5, instrument: 0 },  // B4
-        { pitch: 67, startTime: 2.5, endTime: 3, instrument: 0 },  // G4
-        { pitch: 64, startTime: 3, endTime: 3.5, instrument: 0 },  // E4
-        { pitch: 60, startTime: 3.5, endTime: 4, instrument: 0 },  // C4
-
-        // Bass - Root notes of the C Major chord progression
-        { pitch: 48, startTime: 0, endTime: 1, instrument: 1 },    // C3
-        { pitch: 48, startTime: 1, endTime: 2, instrument: 1 },    // C3
-        { pitch: 48, startTime: 2, endTime: 3, instrument: 1 },    // C3
-        { pitch: 48, startTime: 3, endTime: 4, instrument: 1 },    // C3
-
-        // Drums - Simple drum pattern
-        { pitch: 36, startTime: 0, endTime: 0.5, instrument: 2 },  // Kick drum
-        { pitch: 38, startTime: 0.5, endTime: 1, instrument: 2 },  // Snare drum
-        { pitch: 42, startTime: 1, endTime: 1.5, instrument: 2 },  // Closed Hi-hat
-        { pitch: 36, startTime: 1.5, endTime: 2, instrument: 2 },  // Kick drum
-        { pitch: 38, startTime: 2, endTime: 2.5, instrument: 2 },  // Snare drum
-        { pitch: 42, startTime: 2.5, endTime: 3, instrument: 2 },  // Closed Hi-hat
-        { pitch: 36, startTime: 3, endTime: 3.5, instrument: 2 },  // Kick drum
-        { pitch: 38, startTime: 3.5, endTime: 4, instrument: 2 },  // Snare drum
-    ],
-    totalTime: 4 // Length of the seed in quarter notes
-};
-
 
 document.addEventListener("DOMContentLoaded", function() {
     // Emotion Detection und Music Model laden
@@ -48,7 +17,8 @@ document.addEventListener("DOMContentLoaded", function() {
         await musicModel.initialize();
     }
 
-    const player = new mm.Player();
+    let player = new mm.Player();
+    console.log("Player initialized: ", player);
 
     const video = document.getElementById('webcam');
 
@@ -121,7 +91,7 @@ document.addEventListener("DOMContentLoaded", function() {
                         .expandDims(0); // Batch dimension hinzufügen
         
         const prediction = await emotionModel.predict(tensor).data();
-        console.log(prediction);
+        
         // Prediction als lesbares Format darstellen
         const emotionIndex = prediction.indexOf(Math.max(...prediction));
         const emotionLabels = ['Angry', 'Disgust', 'Fear', 'Happy', 'Sad', 'Surprised', 'Neutral'];
@@ -136,44 +106,53 @@ document.addEventListener("DOMContentLoaded", function() {
             return;
         }
 
+        // DONT TOUCH FROM HERE
+
         let seed; // Musikalischen Seed oder Features für jede Emotion definieren
 
         switch(emotion) {
             case 'Angry':
-                seed = seed1;
                 break;
             case 'Disgust':
-                seed = seed1;
                 break;
             case 'Fear':
-                seed = seed1;
                 break;
             case 'Happy':
-                seed = seed1;
                 break;
             case 'Sad':
-                seed = seed1;
                 break;
             case 'Surprised':
-                seed = seed1;
                 break;
             case 'Neutral':
-                seed = seed1;
                 break;
         }
 
-        const generatedMusic = await musicModel.sample(seed);
-        playMusic(generatedMusic);
+        // DONT TOUCH UNTIL HERE
 
-        console.log("Generating music for emotion: " + emotion);
-        console.log(seed)
+        const numSamples = 1;
+        const sampleLength = 4;
+
+        try {
+            const generatedMusic = await musicModel.sample(numSamples, sampleLength);
+            playMusic(generatedMusic[0]);
+            console.log("Generating music for emotion: " + emotion);
+        } catch (error) {
+            console.error("Error generating music: ", error);
+        }
     }
 
     // Spielt Musik ab.
     function playMusic(musicSequence) {
+        if (!player) {
+            console.error("Player is not initialized!");
+            return;
+        }
+
         if (!player.isPlaying) {
+            console.log("Player isnt playing!");
             player.stop();
         }
+        console.log("Playing Music Sequence: ", musicSequence);
         player.start(musicSequence);
     }
 });
