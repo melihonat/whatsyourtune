@@ -1,25 +1,27 @@
 tf.setBackend('cpu');
 let emotionModel;
 let musicModel;
+let player = new mm.Player();
+
+let lastEmotionDetection = Date.now();
+const EMOTION_DETECTION_INTERVAL = 10000; // 1000 = 1s
+
+async function loadEmotionModel() {
+    emotionModel = await tf.loadLayersModel('/models/emotion/model.json');
+}
+
+async function loadMusicModel() {
+    musicModel = new music_vae.MusicVAE('https://storage.googleapis.com/magentadata/js/checkpoints/music_vae/mel_2bar_small');
+    await musicModel.initialize();
+    console.log(musicModel);
+}
 
 
 document.addEventListener("DOMContentLoaded", function () {
-    // Emotion Detection und Music Model laden
     loadEmotionModel();
     loadMusicModel();
 
-    async function loadEmotionModel() {
-        emotionModel = await tf.loadLayersModel('/models/emotion/model.json');
-    }
-
-    async function loadMusicModel() {
-        musicModel = new music_vae.MusicVAE('https://storage.googleapis.com/magentadata/js/checkpoints/music_vae/trio_4bar');
-        await musicModel.initialize();
-    }
-
     let audioContext = new AudioContext();
-    let player = new core.Player();
-    console.log("Player initialized: ", player);
 
     const video = document.getElementById('webcam');
 
@@ -48,23 +50,27 @@ document.addEventListener("DOMContentLoaded", function () {
         faceapi.matchDimensions(canvas, displaySize)
 
         setInterval(async () => {
-            const detection = await faceapi.detectSingleFace(video, new faceapi.TinyFaceDetectorOptions);
-            if (detection) {
-                const resizedDetection = faceapi.resizeResults(detection, displaySize)
-                canvas.getContext('2d').clearRect(0, 0, canvas.width, canvas.height)
-                faceapi.draw.drawDetections(canvas, resizedDetection)
+            const now = Date.now();
+            if (now - lastEmotionDetection > EMOTION_DETECTION_INTERVAL) {
+                lastEmotionDetection = now;
+                const detection = await faceapi.detectSingleFace(video, new faceapi.TinyFaceDetectorOptions);
+                if (detection) {
+                    const resizedDetection = faceapi.resizeResults(detection, displaySize)
+                    canvas.getContext('2d').clearRect(0, 0, canvas.width, canvas.height)
+                    faceapi.draw.drawDetections(canvas, resizedDetection)
 
-                // Resize auf 48x48 px
-                const croppedFace = await cropAndResizeFace(video, detection);
+                    // Resize auf 48x48 px
+                    const croppedFace = await cropAndResizeFace(video, detection);
 
-                // Emotion Detection Model auf Cropped Face zugreifen lassen
-                const emotion = await detectEmotion(croppedFace);
+                    // Emotion Detection Model auf Cropped Face zugreifen lassen
+                    const emotion = await detectEmotion(croppedFace);
 
-                // Emotion anzeigen
-                document.getElementById('emotionDisplay').innerText = `Emotion: ${emotion}`;
+                    // Emotion anzeigen
+                    document.getElementById('emotionDisplay').innerText = `Emotion: ${emotion}`;
 
-                // Musik generieren
-                generateMusicBasedOnEmotion(emotion);
+                    // Musik generieren
+                    generateMusicBasedOnEmotion(emotion);
+                }
             }
         }, 100)
     });
@@ -107,36 +113,66 @@ document.addEventListener("DOMContentLoaded", function () {
             return;
         }
 
-        let seed; // Musikalischen Seed oder Features für jede Emotion definieren
-
-        switch (emotion) {
-            case 'Angry':
-                break;
-            case 'Disgust':
-                break;
-            case 'Fear':
-                break;
-            case 'Happy':
-                break;
-            case 'Sad':
-                break;
-            case 'Surprised':
-                break;
-            case 'Neutral':
-                break;
-        }
-
-        const numSamples = 1;
-        const sampleLength = 4;
+        const primerMelody = getPrimerMelodyForEmotion(emotion);
+        const numSteps = 128; // Length of generated sequence
+        const temperature = 1.0; // Randomness. 0: Exactly the same
 
         try {
-            //const generatedMusic = await musicModel.sample(numSamples, sampleLength);
-            //playMusic(generatedMusic[0]);
+            const generatedMusic = await musicModel.similar(primerMelody, 1, 0.5);
+            console.log("Music generated.");
+            player.start(generatedMusic[0]);
             console.log("Generating music for emotion: " + emotion);
         } catch (error) {
             console.error("Error generating music: ", error);
         }
     }
+
+    function getPrimerMelodyForEmotion(emotion) {
+        switch (emotion) {
+            case 'Angry':
+                return { /* Features für Angry */ };
+            case 'Disgust':
+                return { /* Features für Disgust */ };
+            case 'Fear':
+                return { /* Features für Fear */ };
+            case 'Happy':
+                return {};
+            case 'Sad':
+                return {
+                    notes: [
+                        {
+                            pitch: 55, // A4
+                            quantizedStartStep: 0,
+                            quantizedEndStep: 2
+                        },
+                        {
+                            pitch: 53, // G4
+                            quantizedStartStep: 2,
+                            quantizedEndStep: 4
+                        },
+                        {
+                            pitch: 50, // E4
+                            quantizedStartStep: 4,
+                            quantizedEndStep: 6
+                        },
+                        {
+                            pitch: 48, // C4
+                            quantizedStartStep: 6,
+                            quantizedEndStep: 8
+                        }
+                    ],
+                    totalQuantizedSteps: 8,
+                    quantizationInfo: { stepsPerQuarter: 2 }
+                };
+            case 'Surprised':
+                return { /* Features für Surprised */ };
+            case 'Neutral':
+                return { /* Neutrale Features */ };
+            default:
+                return { /* Default wenn emotion nicht erkannt wird */ };
+        }
+    }
+
 
     // Spielt Musik ab.
     function playMusic(musicSequence) {
@@ -145,12 +181,16 @@ document.addEventListener("DOMContentLoaded", function () {
             return;
         }
 
-        if (!player.isPlaying) {
-            console.log("Player isnt playing!");
+        if (player.isPlaying) {
+            console.log("Player is already playing! Stopping current playback.");
             player.stop();
         }
-        //console.log("Playing Music Sequence: ", musicSequence);
-        //player.start(musicSequence);
+        try {
+            player.start(musicSequence);
+            console.log("Playback started.");
+        } catch (error) {
+            console.error("Error during playback: ", error);
+        }
     }
 
     function playMusicTest() {
