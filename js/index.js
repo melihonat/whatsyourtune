@@ -4,7 +4,7 @@ let musicModel;
 let player = new mm.Player();
 
 let lastEmotionDetection = Date.now();
-const EMOTION_DETECTION_INTERVAL = 10000; // 1000 = 1s
+const EMOTION_DETECTION_INTERVAL = 7000; // 1000 = 1s
 
 async function loadEmotionModel() {
     emotionModel = await tf.loadLayersModel('/models/emotion/model.json');
@@ -14,6 +14,9 @@ async function loadMusicModel() {
     musicModel = new music_vae.MusicVAE('https://storage.googleapis.com/magentadata/js/checkpoints/music_vae/mel_2bar_small');
     await musicModel.initialize();
     console.log(musicModel);
+
+    player = new mm.SoundFontPlayer('https://storage.googleapis.com/magentadata/js/soundfonts/salamander');
+    console.log(player);
 }
 
 
@@ -114,82 +117,14 @@ document.addEventListener("DOMContentLoaded", function () {
         }
 
         const primerMelody = getPrimerMelodyForEmotion(emotion);
-        const numSteps = 128; // Length of generated sequence
-        const temperature = 1.0; // Randomness. 0: Exactly the same
 
         try {
             const generatedMusic = await musicModel.similar(primerMelody, 1, 0.5);
-            console.log("Music generated.");
+            console.log("Music generated: ", generatedMusic[0]);
             player.start(generatedMusic[0]);
             console.log("Generating music for emotion: " + emotion);
         } catch (error) {
             console.error("Error generating music: ", error);
-        }
-    }
-
-    function getPrimerMelodyForEmotion(emotion) {
-        switch (emotion) {
-            case 'Angry':
-                return { /* Features für Angry */ };
-            case 'Disgust':
-                return { /* Features für Disgust */ };
-            case 'Fear':
-                return { /* Features für Fear */ };
-            case 'Happy':
-                return {};
-            case 'Sad':
-                return {
-                    notes: [
-                        {
-                            pitch: 55, // A4
-                            quantizedStartStep: 0,
-                            quantizedEndStep: 2
-                        },
-                        {
-                            pitch: 53, // G4
-                            quantizedStartStep: 2,
-                            quantizedEndStep: 4
-                        },
-                        {
-                            pitch: 50, // E4
-                            quantizedStartStep: 4,
-                            quantizedEndStep: 6
-                        },
-                        {
-                            pitch: 48, // C4
-                            quantizedStartStep: 6,
-                            quantizedEndStep: 8
-                        }
-                    ],
-                    totalQuantizedSteps: 8,
-                    quantizationInfo: { stepsPerQuarter: 2 }
-                };
-            case 'Surprised':
-                return { /* Features für Surprised */ };
-            case 'Neutral':
-                return { /* Neutrale Features */ };
-            default:
-                return { /* Default wenn emotion nicht erkannt wird */ };
-        }
-    }
-
-
-    // Spielt Musik ab.
-    function playMusic(musicSequence) {
-        if (!player) {
-            console.error("Player is not initialized!");
-            return;
-        }
-
-        if (player.isPlaying) {
-            console.log("Player is already playing! Stopping current playback.");
-            player.stop();
-        }
-        try {
-            player.start(musicSequence);
-            console.log("Playback started.");
-        } catch (error) {
-            console.error("Error during playback: ", error);
         }
     }
 
@@ -232,3 +167,143 @@ document.addEventListener("DOMContentLoaded", function () {
         });
     });
 });
+
+
+// Setting primary melodies for the model to sample
+function getPrimerMelodyForEmotion(emotion) {
+    switch (emotion) {
+
+        case 'Angry':
+            return {
+                notes: [ // C Minor, 140 BPM
+                    { pitch: 60, quantizedStartStep: 0, quantizedEndStep: 2 }, // C4
+                    { pitch: 63, quantizedStartStep: 2, quantizedEndStep: 4 }, // Eb4 (dissonant)
+                    { pitch: 67, quantizedStartStep: 4, quantizedEndStep: 6 }, // G4
+                    { pitch: 63, quantizedStartStep: 6, quantizedEndStep: 8 }, // Eb4
+                    { pitch: 60, quantizedStartStep: 8, quantizedEndStep: 10 }, // C4
+                    { pitch: 63, quantizedStartStep: 10, quantizedEndStep: 12 }, // Eb4
+                    { pitch: 67, quantizedStartStep: 12, quantizedEndStep: 14 }, // G4
+                    { pitch: 63, quantizedStartStep: 14, quantizedEndStep: 16 }  // Eb4
+                ],
+                totalQuantizedSteps: 16,
+                quantizationInfo: { stepsPerQuarter: 4 },
+                tempos: [{ time: 0, qpm: 140 }]
+            };
+
+        case 'Disgust':
+            return {
+                notes: [ // No key (lots of key changes), 110BPM
+                    { pitch: 61, quantizedStartStep: 0, quantizedEndStep: 2 }, // C#4
+                    { pitch: 58, quantizedStartStep: 2, quantizedEndStep: 4 }, // A#3
+                    { pitch: 56, quantizedStartStep: 4, quantizedEndStep: 6 }, // G#3
+                    { pitch: 54, quantizedStartStep: 6, quantizedEndStep: 8 }, // F#3
+                    { pitch: 52, quantizedStartStep: 8, quantizedEndStep: 10 }, // E3
+                    { pitch: 50, quantizedStartStep: 10, quantizedEndStep: 12 }, // D3
+                    { pitch: 48, quantizedStartStep: 12, quantizedEndStep: 14 }, // C3
+                    { pitch: 46, quantizedStartStep: 14, quantizedEndStep: 16 }  // A#2
+                ],
+                totalQuantizedSteps: 16,
+                quantizationInfo: { stepsPerQuarter: 4 },
+                tempos: [{ time: 0, qpm: 110 }]
+            };
+
+        case 'Fear':
+            return {
+                notes: [ // C Minor, 90 BPM
+                    { pitch: 60, quantizedStartStep: 0, quantizedEndStep: 1 }, // C4
+                    { pitch: 63, quantizedStartStep: 1, quantizedEndStep: 3 }, // Eb4
+                    { pitch: 68, quantizedStartStep: 3, quantizedEndStep: 5 }, // Ab4
+                    { pitch: 66, quantizedStartStep: 5, quantizedEndStep: 7 }, // F#4
+                    { pitch: 63, quantizedStartStep: 7, quantizedEndStep: 9 }, // Eb4
+                    { pitch: 68, quantizedStartStep: 9, quantizedEndStep: 11 }, // Ab4
+                    { pitch: 66, quantizedStartStep: 11, quantizedEndStep: 13 }, // F#4
+                    { pitch: 63, quantizedStartStep: 13, quantizedEndStep: 15 }, // Eb4
+                    { pitch: 60, quantizedStartStep: 15, quantizedEndStep: 16 }  // C4
+                ],
+                totalQuantizedSteps: 16,
+                quantizationInfo: { stepsPerQuarter: 4 },
+                tempos: [{ time: 0, qpm: 90 }]
+            };
+
+        case 'Happy':
+            return {
+                notes: [ // C Major, 120 BPM, short notes
+                    { pitch: 72, quantizedStartStep: 0, quantizedEndStep: 2 }, // C5
+                    { pitch: 76, quantizedStartStep: 2, quantizedEndStep: 4 }, // E5
+                    { pitch: 79, quantizedStartStep: 4, quantizedEndStep: 6 }, // G5
+                    { pitch: 84, quantizedStartStep: 6, quantizedEndStep: 8 }, // C6
+                    { pitch: 79, quantizedStartStep: 8, quantizedEndStep: 10 }, // G5
+                    { pitch: 76, quantizedStartStep: 10, quantizedEndStep: 12 }, // E5
+                    { pitch: 72, quantizedStartStep: 12, quantizedEndStep: 14 }, // C5
+                    { pitch: 76, quantizedStartStep: 14, quantizedEndStep: 16 }, // E5
+                ],
+                totalQuantizedSteps: 16,
+                quantizationInfo: { stepsPerQuarter: 4 },
+                tempos: [{ time: 0, qpm: 120 }]
+            };
+
+        case 'Sad':
+            return { // A Minor, 60 BPM, long notes
+                notes: [
+                    { pitch: 60, quantizedStartStep: 0, quantizedEndStep: 4 }, // C4
+                    { pitch: 58,  quantizedStartStep: 4, quantizedEndStep: 8 }, // A3
+                    { pitch: 57, quantizedStartStep: 8, quantizedEndStep: 12 }, // G3
+                    { pitch: 55, quantizedStartStep: 12, quantizedEndStep: 16 } // F3
+                ],
+                totalQuantizedSteps: 16,
+                quantizationInfo: { stepsPerQuarter: 4 },
+                tempos: [{ time: 0, qpm: 60 }]
+            };
+
+        case 'Surprised':
+            return { 
+                notes: [ // unpredictable pattern, 100 BPM
+                    { pitch: 60, quantizedStartStep: 0, quantizedEndStep: 2 }, // C4
+                    { pitch: 72, quantizedStartStep: 2, quantizedEndStep: 4 }, // C5
+                    { pitch: 67, quantizedStartStep: 4, quantizedEndStep: 6 }, // G4
+                    { pitch: 69, quantizedStartStep: 6, quantizedEndStep: 8 }, // A4
+                    { pitch: 71, quantizedStartStep: 8, quantizedEndStep: 10 }, // B4
+                    { pitch: 60, quantizedStartStep: 10, quantizedEndStep: 12 }, // C4
+                    { pitch: 72, quantizedStartStep: 12, quantizedEndStep: 14 }, // C5
+                    { pitch: 64, quantizedStartStep: 14, quantizedEndStep: 16 }  // E4
+                ],
+                totalQuantizedSteps: 16,
+                quantizationInfo: { stepsPerQuarter: 4 },
+                tempos: [{ time: 0, qpm: 100 }]
+             };
+
+        case 'Neutral':
+            return {
+                notes: [ // C Major, 100 BPM, simple & balanced
+                    { pitch: 60, quantizedStartStep: 0, quantizedEndStep: 2 }, // C4
+                    { pitch: 62, quantizedStartStep: 2, quantizedEndStep: 4 }, // D4
+                    { pitch: 64, quantizedStartStep: 4, quantizedEndStep: 6 }, // E4
+                    { pitch: 65, quantizedStartStep: 6, quantizedEndStep: 8 }, // F4
+                    { pitch: 67, quantizedStartStep: 8, quantizedEndStep: 10 }, // G4
+                    { pitch: 65, quantizedStartStep: 10, quantizedEndStep: 12 }, // F4
+                    { pitch: 64, quantizedStartStep: 12, quantizedEndStep: 14 }, // E4
+                    { pitch: 62, quantizedStartStep: 14, quantizedEndStep: 16 }  // D4
+                ],
+                totalQuantizedSteps: 16,
+                quantizationInfo: { stepsPerQuarter: 4 },
+                tempos: [{ time: 0, qpm: 100 }]
+            };
+
+        default:
+            return { 
+                notes: [ // Same as Neutral
+                    { pitch: 60, quantizedStartStep: 0, quantizedEndStep: 2 }, // C4
+                    { pitch: 62, quantizedStartStep: 2, quantizedEndStep: 4 }, // D4
+                    { pitch: 64, quantizedStartStep: 4, quantizedEndStep: 6 }, // E4
+                    { pitch: 65, quantizedStartStep: 6, quantizedEndStep: 8 }, // F4
+                    { pitch: 67, quantizedStartStep: 8, quantizedEndStep: 10 }, // G4
+                    { pitch: 65, quantizedStartStep: 10, quantizedEndStep: 12 }, // F4
+                    { pitch: 64, quantizedStartStep: 12, quantizedEndStep: 14 }, // E4
+                    { pitch: 62, quantizedStartStep: 14, quantizedEndStep: 16 }  // D4
+                ],
+                totalQuantizedSteps: 16,
+                quantizationInfo: { stepsPerQuarter: 4 },
+                tempos: [{ time: 0, qpm: 100 }]
+            };
+    }
+}
