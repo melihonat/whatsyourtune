@@ -1,7 +1,8 @@
 tf.setBackend('cpu');
 let emotionModel;
 let musicModel;
-let player = new mm.Player();
+
+let player;
 
 let lastEmotionDetection = Date.now();
 const EMOTION_DETECTION_INTERVAL = 7000; // 1000 = 1s
@@ -15,6 +16,7 @@ async function loadMusicModel() {
     await musicModel.initialize();
     console.log(musicModel);
 
+    // Piano Soundfont
     player = new mm.SoundFontPlayer('https://storage.googleapis.com/magentadata/js/soundfonts/salamander');
     console.log(player);
 }
@@ -28,7 +30,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
     const video = document.getElementById('webcam');
 
-    // Face-Api-JS TinyFaceDetector Model laden
+    // Load Face-Api-JS TinyFaceDetector Model
     Promise.all([
         faceapi.nets.tinyFaceDetector.loadFromUri('/models/face'),
     ]).then(startVideo)
@@ -44,7 +46,7 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     video.addEventListener('play', () => {
-        // Canvas erstellen und unsichtbar über die Webcam legen
+        // create a canvas and lay it over the webcam (although invisible)
         const canvas = faceapi.createCanvasFromMedia(video)
         const contentDiv = document.querySelector('.content');
         contentDiv.appendChild(canvas);
@@ -62,22 +64,23 @@ document.addEventListener("DOMContentLoaded", function () {
                     canvas.getContext('2d').clearRect(0, 0, canvas.width, canvas.height)
                     faceapi.draw.drawDetections(canvas, resizedDetection)
 
-                    // Resize auf 48x48 px
+                    // Resize to 48x48 px
                     const croppedFace = await cropAndResizeFace(video, detection);
 
-                    // Emotion Detection Model auf Cropped Face zugreifen lassen
+                    // Letting the emotion detection model access Cropped Face
                     const emotion = await detectEmotion(croppedFace);
 
-                    // Emotion anzeigen
+                    // display emotion
                     document.getElementById('emotionDisplay').innerText = `Emotion: ${emotion}`;
 
-                    // Musik generieren
+                    // generate music
                     generateMusicBasedOnEmotion(emotion);
                 }
             }
         }, 100)
     });
 
+    // Function to allow our emotion detection model to correctly predict since it was trained on 48x48px frames
     async function cropAndResizeFace(video, detection) {
         const face = detection.box;
         const canvas = document.createElement('canvas');
@@ -91,18 +94,18 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     async function detectEmotion(croppedFace) {
-        // CroppedFace zu Tensor konvertieren
+        // convert CroppedFace to Tensor
         const tensor = tf.browser.fromPixels(croppedFace)
-            .resizeNearestNeighbor([48, 48]) // Models erwartete Inputgröße
-            .mean(2) // Zu grayscale konvertieren mittels RGB-Channel-Averaging
+            .resizeNearestNeighbor([48, 48]) // expected input-shape (see cropAndResizeFace())
+            .mean(2) // RGB-Channel-Averaging (convert to grayscale)
             .toFloat()
-            .div(255.0) // Pixelwerte normalisieren (-1, 1)
-            .expandDims(-1) // Channel dimension hinzufügen
-            .expandDims(0); // Batch dimension hinzufügen
+            .div(255.0) // normalize pixels
+            .expandDims(-1) // add channel dimension
+            .expandDims(0); // add batch dimension
 
         const prediction = await emotionModel.predict(tensor).data();
 
-        // Prediction als lesbares Format darstellen
+        // display the emotion in a readable format
         const emotionIndex = prediction.indexOf(Math.max(...prediction));
         const emotionLabels = ['Angry', 'Disgust', 'Fear', 'Happy', 'Sad', 'Surprised', 'Neutral'];
         const detectedEmotion = emotionLabels[emotionIndex];
@@ -128,6 +131,7 @@ document.addEventListener("DOMContentLoaded", function () {
         }
     }
 
+    // Function to implement testing out sequences (edit the testSequence variable to play different melodies)
     function playMusicTest() {
         const testSequence = {
             "notes": [
@@ -156,6 +160,7 @@ document.addEventListener("DOMContentLoaded", function () {
         }
     }
 
+    // Playing test sequence
     document.getElementById('playButton').addEventListener('click', function () {
         console.log("Audio Context state before: ", audioContext.state);
         audioContext.resume().then(() => {
@@ -167,6 +172,7 @@ document.addEventListener("DOMContentLoaded", function () {
         });
     });
 });
+
 
 
 // Setting primary melodies for the model to sample
