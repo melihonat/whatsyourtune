@@ -1,33 +1,39 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="styles.css">
     <link rel="icon" href="icon.png" type="image/png">
     <title>Whatsyourtune</title>
-     <!-- Tone.js for the player, and tfjs for the emotion model -->
+    <!-- Tone.js for the player, and tfjs for the emotion model -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.7.58/Tone.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
-     <!-- Face detection -->
+    <!-- Face detection -->
     <script src="https://cdn.jsdelivr.net/npm/@vladmandic/face-api/dist/face-api.js"></script>
-     <!-- Magenta Music library -->
+    <!-- Magenta Music library -->
     <script src="https://cdn.jsdelivr.net/npm/@magenta/music"></script>
     <script src="https://cdn.jsdelivr.net/npm/@magenta/music/es6/music_vae.js"></script>
 </head>
+
 <body>
     <header>
         <a href="index.html">
             <img src="logo.png" alt="Whatsyourtune">
         </a>
     </header>
+    <div class="particles" id="particles"></div>
     <div class="content">
+        <div id="countdownDisplay"></div>
+
         <video id="webcam" width="640" height="480" autoplay></video>
+        
         <script src="index.js"></script>
         <div id="emotionDisplay"></div>
     </div>
-    <div id="animationContainer"></div>     <!--Eventuell löschen-->
-      <footer>
+    <div id="animationContainer"></div>
+    <footer>
         <div class="footer-content">
             <div class="copyright">© 2024 Whatsyourtune. All rights reserved.</div>
             <div class="social-media">
@@ -42,4 +48,5 @@
         </div>
     </footer>
 </body>
+
 </html>

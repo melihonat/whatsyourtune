@@ -15,6 +15,7 @@ body {
 
 header {
     text-align: center;
+    z-index: 6;
 }
 
 header img {
@@ -52,6 +53,44 @@ header img {
     color: white;
 }
 
+.particles {
+    position: absolute;
+    z-index: 1;
+    overflow: hidden;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+}
+
+.particle {
+    border-radius: 50%;
+    filter: blur(3px);
+    position: absolute;
+}
+
+#countdownDisplay {
+    position: absolute;
+    top: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 10;
+}
+
+@keyframes move {
+    0% {
+        transform: translateY(45vw);
+        opacity: 0;
+    }
+    10%, 90% {
+        opacity: 1;
+    }
+    100% {
+        transform: translateY(0);
+        opacity: 0;
+    }
+}
+
 .content {
     flex: 1;
     position: relative;
@@ -65,7 +104,8 @@ header img {
     max-width: 700px;
     max-height: 650px;
     width: 100%;
-    overflow: hidden
+    overflow: hidden;
+    z-index: 2;
 }
 
 #emotionDisplay {
@@ -153,6 +193,7 @@ footer {
     bottom: 0;
     width: 100%;
     height: 50px;
+    z-index: 5;
 }
 
 .footer-content {
