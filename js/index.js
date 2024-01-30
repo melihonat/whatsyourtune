@@ -5,6 +5,7 @@ let player = new mm.Player();
 
 let lastEmotionDetection = Date.now();
 const EMOTION_DETECTION_INTERVAL = 7000; // 1000 = 1s
+let countdownValue = 3;
 
 async function loadEmotionModel() {
     emotionModel = await tf.loadLayersModel('/models/emotion/model.json');
@@ -18,7 +19,6 @@ async function loadMusicModel() {
     player = new mm.SoundFontPlayer('https://storage.googleapis.com/magentadata/js/soundfonts/salamander');
     console.log(player);
 }
-
 
 document.addEventListener("DOMContentLoaded", function () {
     loadEmotionModel();
@@ -56,6 +56,7 @@ document.addEventListener("DOMContentLoaded", function () {
             const now = Date.now();
             if (now - lastEmotionDetection > EMOTION_DETECTION_INTERVAL) {
                 lastEmotionDetection = now;
+
                 const detection = await faceapi.detectSingleFace(video, new faceapi.TinyFaceDetectorOptions);
                 if (detection) {
                     const resizedDetection = faceapi.resizeResults(detection, displaySize)
@@ -78,74 +79,74 @@ document.addEventListener("DOMContentLoaded", function () {
         }, 100)
     });
 
-async function cropAndResizeFace(video, detection) {
-    const face = detection.box;
-    const canvas = document.createElement('canvas');
-    canvas.width = 48;
-    canvas.height = 48;
-    const context = canvas.getContext('2d');
+    async function cropAndResizeFace(video, detection) {
+        const face = detection.box;
+        const canvas = document.createElement('canvas');
+        canvas.width = 48;
+        canvas.height = 48;
+        const context = canvas.getContext('2d');
 
-    context.drawImage(video, face.x, face.y, face.width, face.height, 0, 0, 48, 48);
+        context.drawImage(video, face.x, face.y, face.width, face.height, 0, 0, 48, 48);
 
-    return canvas;
-}
-
-async function detectEmotion(croppedFace) {
-    // CroppedFace zu Tensor konvertieren
-    const tensor = tf.browser.fromPixels(croppedFace)
-        .resizeNearestNeighbor([48, 48]) // Models erwartete Inputgröße
-        .mean(2) // Zu grayscale konvertieren mittels RGB-Channel-Averaging
-        .toFloat()
-        .div(255.0) // Pixelwerte normalisieren (-1, 1)
-        .expandDims(-1) // Channel dimension hinzufügen
-        .expandDims(0); // Batch dimension hinzufügen
-
-    const prediction = await emotionModel.predict(tensor).data();
-
-    // Prediction als lesbares Format darstellen
-    const emotionIndex = prediction.indexOf(Math.max(...prediction));
-    const emotionLabels = ['Angry', 'Disgust', 'Fear', 'Happy', 'Sad', 'Surprised', 'Neutral'];
-    const detectedEmotion = emotionLabels[emotionIndex];
-
-    // Update Partikelfarbe 
-    updateParticleColor(detectedEmotion.toLowerCase());
-
-    // Update Emotionsanzeige mit entsprechender Farbe
-    const emotionDisplay = document.getElementById('emotionDisplay');
-    emotionDisplay.className = ''; // Vorhandene Klassen löschen
-    emotionDisplay.classList.add(`emotion-${detectedEmotion.toLowerCase()}`);
-    emotionDisplay.innerText = `Emotion: ${detectedEmotion}`;
-
-    // Background basierend auf erkannter Emotion updaten                        //Eventuell löschen
-    updateBackgroundAnimation(detectedEmotion.toLowerCase());                     //
-
-    return detectedEmotion;
-}
-
-// Function to update the color of the background animation                       //
-function updateBackgroundAnimation(emotion) {
-    const animationContainer = document.getElementById('animationContainer');
-    animationContainer.className = ''; // Clear existing classes
-    animationContainer.classList.add(`animation-${emotion}`);
-}                                                                                 //
-
-async function generateMusicBasedOnEmotion(emotion) {
-    if (!musicModel) {
-        console.error("Music Model ist noch nicht geladen!");
-        return;
+        return canvas;
     }
 
-    const primerMelody = getPrimerMelodyForEmotion(emotion);
+    async function detectEmotion(croppedFace) {
+        // CroppedFace zu Tensor konvertieren
+        const tensor = tf.browser.fromPixels(croppedFace)
+            .resizeNearestNeighbor([48, 48]) // Models erwartete Inputgröße
+            .mean(2) // Zu grayscale konvertieren mittels RGB-Channel-Averaging
+            .toFloat()
+            .div(255.0) // Pixelwerte normalisieren (-1, 1)
+            .expandDims(-1) // Channel dimension hinzufügen
+            .expandDims(0); // Batch dimension hinzufügen
 
-    try {
-        const generatedMusic = await musicModel.similar(primerMelody, 1, 0.5);
-        console.log("Music generated: ", generatedMusic[0]);
-        player.start(generatedMusic[0]);
-        console.log("Generating music for emotion: " + emotion);
-    } catch (error) {
-        console.error("Error generating music: ", error);
+        const prediction = await emotionModel.predict(tensor).data();
+
+        // Prediction als lesbares Format darstellen
+        const emotionIndex = prediction.indexOf(Math.max(...prediction));
+        const emotionLabels = ['Angry', 'Disgust', 'Fear', 'Happy', 'Sad', 'Surprised', 'Neutral'];
+        const detectedEmotion = emotionLabels[emotionIndex];
+
+        // Update Partikelfarbe 
+        updateParticleColor(detectedEmotion.toLowerCase());
+
+        // Update Emotionsanzeige mit entsprechender Farbe
+        const emotionDisplay = document.getElementById('emotionDisplay');
+        emotionDisplay.className = ''; // Vorhandene Klassen löschen
+        emotionDisplay.classList.add(`emotion-${detectedEmotion.toLowerCase()}`);
+        emotionDisplay.innerText = `Emotion: ${detectedEmotion}`;
+
+        // Background basierend auf erkannter Emotion updaten                        //Eventuell löschen
+        updateBackgroundAnimation(detectedEmotion.toLowerCase());                     //
+
+        return detectedEmotion;
     }
-}
+
+    // Function to update the color of the background animation                       //
+    function updateBackgroundAnimation(emotion) {
+        const animationContainer = document.getElementById('animationContainer');
+        animationContainer.className = ''; // Clear existing classes
+        animationContainer.classList.add(`animation-${emotion}`);
+    }                                                                                 //
+
+    async function generateMusicBasedOnEmotion(emotion) {
+        if (!musicModel) {
+            console.error("Music Model ist noch nicht geladen!");
+            return;
+        }
+
+        const primerMelody = getPrimerMelodyForEmotion(emotion);
+
+        try {
+            const generatedMusic = await musicModel.similar(primerMelody, 1, 0.5);
+            console.log("Music generated: ", generatedMusic[0]);
+            player.start(generatedMusic[0]);
+            console.log("Generating music for emotion: " + emotion);
+        } catch (error) {
+            console.error("Error generating music: ", error);
+        }
+    }
 });
 
 
