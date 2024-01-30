@@ -109,9 +109,9 @@ header img {
 }
 
 #emotionDisplay {
-    font-family: 'Courier New', Courier, monospace; /*anpassen*/
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
     text-align: center;
-    font-size: 28px;
+    font-size: 30px;
     margin-top: 25px;
 }
 
@@ -119,9 +119,9 @@ header img {
 .emotion-disgust { color: olive; animation: glow-olive 1.5s infinite; }
 .emotion-fear { color: black; animation: glow-black 1.5s infinite; }
 .emotion-happy { color: yellow; animation: glow-yellow 1.5s infinite; }
-.emotion-sad { color: brown; animation: glow-brown 1.5s infinite; }
+.emotion-sad { color: rgb(19, 196, 255); animation: glow-lightblue 1.5s infinite; }
 .emotion-surprised { color: purple; animation: glow-purple 1.5s infinite; }
-.emotion-neutral { color: gray; animation: glow-gray 1.5s infinite; }
+.emotion-neutral { color: rgb(82, 82, 82); animation: glow-gray 1.5s infinite; }
 
 @keyframes glow-red {
     0%, 100% { text-shadow: 0 0 10px red, 0 0 20px red; }
@@ -143,9 +143,9 @@ header img {
     50% { text-shadow: 0 0 15px yellow, 0 0 30px yellow; }
 }
 
-@keyframes glow-brown {
-    0%, 100% { text-shadow: 0 0 10px brown, 0 0 20px brown; }
-    50% { text-shadow: 0 0 15px brown, 0 0 30px brown; }
+@keyframes glow-lightblue {
+    0%, 100% { text-shadow: 0 0 10px rgb(0, 66, 88), 0 0 20px rgb(0, 66, 88); }
+    50% { text-shadow: 0 0 15px rgb(0, 66, 88), 0 0 30px rgb(0, 66, 88); }
 }
 
 @keyframes glow-purple {
@@ -154,8 +154,8 @@ header img {
 }
 
 @keyframes glow-gray {
-    0%, 100% { text-shadow: 0 0 10px gray, 0 0 20px gray; }
-    50% { text-shadow: 0 0 15px gray, 0 0 30px gray; }
+    0%, 100% { text-shadow: 0 0 10px rgb(82, 82, 82), 0 0 20px rgb(82, 82, 82); }
+    50% { text-shadow: 0 0 15px rgb(82, 82, 82), 0 0 30px rgb(82, 82, 82); }
 }
 
 #webcam, canvas {
@@ -182,9 +182,9 @@ header img {
 .animation-disgust { background-color: rgba(128, 128, 0, 0.205); }
 .animation-fear { background-color: rgba(0, 0, 0, 0.205); }
 .animation-happy { background-color: rgba(255, 255, 0, 0.205); }
-.animation-sad { background-color: rgba(165, 42, 42, 0.205); }
+.animation-sad { background-color: rgba(0, 66, 88, 0.205); }
 .animation-surprised { background-color: rgba(128, 0, 128, 0.205); }
-.animation-neutral { background-color: rgba(128, 128, 128, 0.205); }
+.animation-neutral { background-color: rgba(82, 82, 82, 0.205); }
 
 
 footer {

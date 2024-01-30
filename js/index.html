@@ -7,12 +7,12 @@
     <link rel="stylesheet" href="styles.css">
     <link rel="icon" href="icon.png" type="image/png">
     <title>Whatsyourtune</title>
-    <!-- Tone.js for the player, and tfjs for the emotion model -->
+    <!-- Tone.js für audio player, und tfjs für das emotion detection model -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.7.58/Tone.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
     <!-- Face detection -->
     <script src="https://cdn.jsdelivr.net/npm/@vladmandic/face-api/dist/face-api.js"></script>
-    <!-- Magenta Music library -->
+    <!-- Magenta Music library und MusicVAE model -->
     <script src="https://cdn.jsdelivr.net/npm/@magenta/music"></script>
     <script src="https://cdn.jsdelivr.net/npm/@magenta/music/es6/music_vae.js"></script>
 </head>
@@ -23,14 +23,21 @@
             <img src="logo.png" alt="Whatsyourtune">
         </a>
     </header>
-    <div class="particles" id="particles"></div>
-    <div class="content">
-        <video id="webcam" width="640" height="480" autoplay></video>
 
+    <div class="particles" id="particles"></div>
+
+    <div class="content">
+        <!-- Countdown vor jedem Mal Emotion-Detection (noch laggy) -->
+        <div id="countdownDisplay"></div>
+        <video id="webcam" width="640" height="480" autoplay></video>
         <script src="index.js"></script>
+        <!-- Welche Emotion wurde detectet? -->
         <div id="emotionDisplay"></div>
     </div>
+
+    <!-- Backgroundfarben passend zur Animation -->
     <div id="animationContainer"></div>
+
     <footer>
         <div class="footer-content">
             <div class="copyright">© 2024 Whatsyourtune. All rights reserved.</div>

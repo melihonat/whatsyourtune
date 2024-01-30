@@ -1,30 +1,36 @@
+// CPU-Backend für Kompatibilität
 tf.setBackend('cpu');
+
+
 let emotionModel;
 let musicModel;
 let player = new mm.Player();
 
+// Emotion detection alle 7 Sekunden (+ Countdown)
 let lastEmotionDetection = Date.now();
 const EMOTION_DETECTION_INTERVAL = 7000; // 1000 = 1s
 let countdownValue = 3;
 
+// Laden unseres Emotion-Detection-Models, aus Python geportet (im "Emotion model"-Ordner)
 async function loadEmotionModel() {
     emotionModel = await tf.loadLayersModel('/models/emotion/model.json');
 }
 
+// https://github.com/magenta/magenta-js/blob/master/music/checkpoints/README.md
 async function loadMusicModel() {
     musicModel = new music_vae.MusicVAE('https://storage.googleapis.com/magentadata/js/checkpoints/music_vae/mel_2bar_small');
     await musicModel.initialize();
     console.log(musicModel);
 
+    // https://archive.org/details/SalamanderGrandPianoV3
     player = new mm.SoundFontPlayer('https://storage.googleapis.com/magentadata/js/soundfonts/salamander');
     console.log(player);
 }
 
 document.addEventListener("DOMContentLoaded", function () {
+    // Models initialisieren
     loadEmotionModel();
     loadMusicModel();
-
-    let audioContext = new AudioContext();
 
     const video = document.getElementById('webcam');
 
@@ -43,8 +49,23 @@ document.addEventListener("DOMContentLoaded", function () {
             });
     }
 
+    function startCountdown() {
+        let countdown = 3; // 3 seconds countdown
+        const countdownDisplay = document.getElementById('countdownDisplay');
+    
+        const countdownInterval = setInterval(() => {
+            countdownDisplay.innerText = `Get ready: ${countdown}`;
+            countdown--;
+    
+            if (countdown < 0) {
+                clearInterval(countdownInterval);
+                countdownDisplay.innerText = '';
+            }
+        }, 1000); // Jede Sekunde updaten
+    }
+
     video.addEventListener('play', () => {
-        // Canvas erstellen und unsichtbar über die Webcam legen
+        // Canvas erstellen und unsichtbar über die Webcam legen (auf diesem Canvas wird die Emotion detectet)
         const canvas = faceapi.createCanvasFromMedia(video)
         const contentDiv = document.querySelector('.content');
         contentDiv.appendChild(canvas);
@@ -54,8 +75,17 @@ document.addEventListener("DOMContentLoaded", function () {
 
         setInterval(async () => {
             const now = Date.now();
+
+            // Countdown starten
+            if (now - lastEmotionDetection > EMOTION_DETECTION_INTERVAL - 3000 && countdownValue) {
+                startCountdown();
+                countdownValue = 0;
+            }
+
+            // Emotion detecten und Musik generieren
             if (now - lastEmotionDetection > EMOTION_DETECTION_INTERVAL) {
                 lastEmotionDetection = now;
+                countdownValue = 3;
 
                 const detection = await faceapi.detectSingleFace(video, new faceapi.TinyFaceDetectorOptions);
                 if (detection) {
@@ -79,6 +109,7 @@ document.addEventListener("DOMContentLoaded", function () {
         }, 100)
     });
 
+    // Emotion-Model braucht ein grayscale Bild in Größe 48x48px
     async function cropAndResizeFace(video, detection) {
         const face = detection.box;
         const canvas = document.createElement('canvas');
@@ -98,8 +129,8 @@ document.addEventListener("DOMContentLoaded", function () {
             .mean(2) // Zu grayscale konvertieren mittels RGB-Channel-Averaging
             .toFloat()
             .div(255.0) // Pixelwerte normalisieren (-1, 1)
-            .expandDims(-1) // Channel dimension hinzufügen
-            .expandDims(0); // Batch dimension hinzufügen
+            .expandDims(-1) // Channel dimension hinzufügen (um input shape zu matchen)
+            .expandDims(0); // Batch dimension hinzufügen (nicht klar ob das überhaupt nötig ist)
 
         const prediction = await emotionModel.predict(tensor).data();
 
@@ -117,25 +148,27 @@ document.addEventListener("DOMContentLoaded", function () {
         emotionDisplay.classList.add(`emotion-${detectedEmotion.toLowerCase()}`);
         emotionDisplay.innerText = `Emotion: ${detectedEmotion}`;
 
-        // Background basierend auf erkannter Emotion updaten                        //Eventuell löschen
-        updateBackgroundAnimation(detectedEmotion.toLowerCase());                     //
+        // Background basierend auf erkannter Emotion updaten
+        updateBackgroundAnimation(detectedEmotion.toLowerCase());
 
         return detectedEmotion;
     }
 
-    // Function to update the color of the background animation                       //
+    // Background Animation Farbe ändern
     function updateBackgroundAnimation(emotion) {
         const animationContainer = document.getElementById('animationContainer');
-        animationContainer.className = ''; // Clear existing classes
+        animationContainer.className = '';
         animationContainer.classList.add(`animation-${emotion}`);
-    }                                                                                 //
+    }
 
+    // Ähnliche Musik von vorher gesetzten Primer-Melodien generieren und abspielen
     async function generateMusicBasedOnEmotion(emotion) {
         if (!musicModel) {
             console.error("Music Model ist noch nicht geladen!");
             return;
         }
-
+        
+        // Melodie zum Samplen (je nach Emotion anders, alle Melodien ab Zeile 185)
         const primerMelody = getPrimerMelodyForEmotion(emotion);
 
         try {
@@ -149,8 +182,6 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 });
 
-
-// Setting primary melodies for the model to sample
 function getPrimerMelodyForEmotion(emotion) {
     switch (emotion) {
 
@@ -415,7 +446,7 @@ function getPrimerMelodyForEmotion(emotion) {
 
         case 'Neutral':
             return {
-                notes: [ // C Major, 100 BPM, simple & balanced
+                notes: [ // simple & balanced
                     { pitch: 64, quantizedStartStep: 0, quantizedEndStep: 4 },
                     { pitch: 64, quantizedStartStep: 4, quantizedEndStep: 8 },
                     { pitch: 64, quantizedStartStep: 8, quantizedEndStep: 12 },
@@ -434,23 +465,6 @@ function getPrimerMelodyForEmotion(emotion) {
                     { pitch: 64, quantizedStartStep: 60, quantizedEndStep: 64 }
                 ],
                 totalQuantizedSteps: 64,
-                quantizationInfo: { stepsPerQuarter: 4 },
-                tempos: [{ time: 0, qpm: 100 }]
-            };
-
-        default:
-            return {
-                notes: [ // Same as Neutral
-                    { pitch: 60, quantizedStartStep: 0, quantizedEndStep: 2 }, // C4
-                    { pitch: 62, quantizedStartStep: 2, quantizedEndStep: 4 }, // D4
-                    { pitch: 64, quantizedStartStep: 4, quantizedEndStep: 6 }, // E4
-                    { pitch: 65, quantizedStartStep: 6, quantizedEndStep: 8 }, // F4
-                    { pitch: 67, quantizedStartStep: 8, quantizedEndStep: 10 }, // G4
-                    { pitch: 65, quantizedStartStep: 10, quantizedEndStep: 12 }, // F4
-                    { pitch: 64, quantizedStartStep: 12, quantizedEndStep: 14 }, // E4
-                    { pitch: 62, quantizedStartStep: 14, quantizedEndStep: 16 }  // D4
-                ],
-                totalQuantizedSteps: 16,
                 quantizationInfo: { stepsPerQuarter: 4 },
                 tempos: [{ time: 0, qpm: 100 }]
             };
@@ -473,7 +487,7 @@ function updateParticleColor(emotion) {
             color = 'yellow';
             break;
         case 'sad':
-            color = 'brown';
+            color = 'rgb(19, 196, 255)';
             break;
         case 'surprised':
             color = 'purple';
@@ -491,7 +505,7 @@ function updateParticleColor(emotion) {
     });
 }
 
-function main() {
+function particlesMain() {
     var np = document.documentElement.clientWidth / 29;
     particles.innerHTML = "";
     for (var i = 0; i < np; i++) {
@@ -516,5 +530,5 @@ function main() {
     }
 }
 
-window.addEventListener("resize", main);
-window.addEventListener("load", main);
+window.addEventListener("resize", particlesMain);
+window.addEventListener("load", particlesMain);
