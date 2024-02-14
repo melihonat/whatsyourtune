@@ -1,0 +1,224 @@
+body {
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column; 
+    justify-content: space-between;;
+    align-items: center;
+    min-height: 100vh;
+    background-image: url('background.jpg');
+    background-size: cover;
+    background-position: center;
+    font-family: 'Gill Sans', 'Gill Sans MT', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif, 'Trebuchet MS', sans-serif, sans-serif;
+    position: relative;
+}
+
+header {
+    text-align: center;
+    z-index: 6;
+}
+
+header img {
+    margin-top:-5%;
+    max-width: 300px;
+    width: 100%;
+}
+
+.loading-screen, .error-screen {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 2rem;
+    color: white;
+    z-index: 1000;
+}
+
+.error-screen {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(255, 0, 0, 0.5);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+    font-size: 1.5rem;
+    color: white;
+}
+
+.particles {
+    position: absolute;
+    z-index: 1;
+    overflow: hidden;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+}
+
+.particle {
+    border-radius: 50%;
+    filter: blur(3px);
+    position: absolute;
+}
+
+#countdownDisplay {
+    position: absolute;
+    top: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 10;
+}
+
+@keyframes move {
+    0% {
+        transform: translateY(45vw);
+        opacity: 0;
+    }
+    10%, 90% {
+        opacity: 1;
+    }
+    100% {
+        transform: translateY(0);
+        opacity: 0;
+    }
+}
+
+.content {
+    flex: 1;
+    position: relative;
+    background-color: rgba(255, 255, 255, 0.2);
+    border-radius: 15px;
+    padding: 20px;
+    box-shadow: 0 8px 12px rgba(0, 0, 1, 1);
+    margin-bottom: 120px;
+    min-width: 500px; 
+    min-height: 500px; 
+    max-width: 700px;
+    max-height: 650px;
+    width: 100%;
+    overflow: hidden;
+    z-index: 2;
+}
+
+#emotionDisplay {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    text-align: center;
+    font-size: 30px;
+    margin-top: 25px;
+}
+
+.emotion-angry { color: red; animation: glow-red 1.5s infinite; }
+.emotion-disgust { color: olive; animation: glow-olive 1.5s infinite; }
+.emotion-fear { color: black; animation: glow-black 1.5s infinite; }
+.emotion-happy { color: yellow; animation: glow-yellow 1.5s infinite; }
+.emotion-sad { color: rgb(19, 196, 255); animation: glow-lightblue 1.5s infinite; }
+.emotion-surprised { color: purple; animation: glow-purple 1.5s infinite; }
+.emotion-neutral { color: rgb(82, 82, 82); animation: glow-gray 1.5s infinite; }
+
+@keyframes glow-red {
+    0%, 100% { text-shadow: 0 0 10px red, 0 0 20px red; }
+    50% { text-shadow: 0 0 15px red, 0 0 30px red; }
+}
+
+@keyframes glow-olive {
+    0%, 100% { text-shadow: 0 0 10px olive, 0 0 20px olive; }
+    50% { text-shadow: 0 0 15px olive, 0 0 30px olive; }
+}
+
+@keyframes glow-black {
+    0%, 100% { text-shadow: 0 0 10px black, 0 0 20px black; }
+    50% { text-shadow: 0 0 15px black, 0 0 30px black; }
+}
+
+@keyframes glow-yellow {
+    0%, 100% { text-shadow: 0 0 10px yellow, 0 0 20px yellow; }
+    50% { text-shadow: 0 0 15px yellow, 0 0 30px yellow; }
+}
+
+@keyframes glow-lightblue {
+    0%, 100% { text-shadow: 0 0 10px rgb(0, 66, 88), 0 0 20px rgb(0, 66, 88); }
+    50% { text-shadow: 0 0 15px rgb(0, 66, 88), 0 0 30px rgb(0, 66, 88); }
+}
+
+@keyframes glow-purple {
+    0%, 100% { text-shadow: 0 0 10px purple, 0 0 20px purple; }
+    50% { text-shadow: 0 0 15px purple, 0 0 30px purple; }
+}
+
+@keyframes glow-gray {
+    0%, 100% { text-shadow: 0 0 10px rgb(82, 82, 82), 0 0 20px rgb(82, 82, 82); }
+    50% { text-shadow: 0 0 15px rgb(82, 82, 82), 0 0 30px rgb(82, 82, 82); }
+}
+
+#webcam, canvas {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    border-radius: 15px;
+    overflow: hidden;
+}
+
+/* CSS for the animation container VON HIER*/
+#animationContainer {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: -1;
+    overflow: hidden;
+}
+
+/* CSS classes for emotion-based colors BIS HIER*/
+.animation-angry { background-color: rgba(255, 0, 0, 0.205); }
+.animation-disgust { background-color: rgba(128, 128, 0, 0.205); }
+.animation-fear { background-color: rgba(0, 0, 0, 0.205); }
+.animation-happy { background-color: rgba(255, 255, 0, 0.205); }
+.animation-sad { background-color: rgba(0, 66, 88, 0.205); }
+.animation-surprised { background-color: rgba(128, 0, 128, 0.205); }
+.animation-neutral { background-color: rgba(82, 82, 82, 0.205); }
+
+
+footer {
+    background-color: rgba(0, 0, 0, 0);
+    color: white;
+    bottom: 0;
+    width: 100%;
+    height: 50px;
+    z-index: 5;
+}
+
+.footer-content {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0 20px;
+    box-sizing: border-box;
+}
+
+.copyright,
+.social-media,
+.footer-links {
+    flex: 1;
+    text-align: center;
+}
+
+.social-media a {
+    margin-right: 10px;
+    color: white;
+    text-decoration: none;
+}
+
+.footer-links a {
+    margin-right: 10px;
+    color: white;
+    text-decoration: none;
+}
